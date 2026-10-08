@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>外幣兌換率 - HIS Tools</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft YaHei', sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    background: linear-gradient(135deg, #1f6feb 0%, #388bfd 50%, #58a6ff 100%);
+    padding: 16px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 1;
+  }
+  .header-icon {
+    font-size: 28px;
+  }
+  .header-title {
+    display: flex;
+    flex-direction: column;
+  }
+  .header-title h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    line-height: 1.2;
+  }
+  .header-title p {
+    font-size: 10px;
+    opacity: 0.85;
+    font-weight: 300;
+  }
+  .header-right {
+    z-index: 1;
+  }
+  .refresh-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s;
+  }
+  .refresh-btn:active {
+    background: rgba(255,255,255,0.3);
+  }
+  .refresh-btn.loading {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .refresh-btn .spin {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* ===== Main Content ===== */
+  .container {
+    padding: 16px 16px 40px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  /* ===== 更新時間 ===== */
+  .update-time {
+    text-align: center;
+    font-size: 11px;
+    color: #484f58;
+    margin-bottom: 14px;
+  }
+
+  /* ===== 貨幣轉換器 ===== */
+  .converter-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .converter-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #8b949e;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .converter-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .converter-row:last-child {
+    margin-bottom: 0;
+  }
+  .amount-input {
+    flex: 1;
+    padding: 12px 14px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    color: #e6edf3;
+    font-size: 18px;
+    font-weight: 600;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .amount-input:focus {
+    border-color: #388bfd;
+  }
+  .currency-select {
+    padding: 12px 10px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    color: #e6edf3;
+    font-size: 14px;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+    min-width: 80px;
+  }
+  .swap-btn {
+    background: #21262d;
+    border: 1px solid #30363d;
+    color: #8b949e;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.2s;
+    margin: 0 auto;
+  }
+  .swap-btn:active {
+    transform: rotate(180deg);
+  }
+  .converter-result {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 12px;
+    text-align: center;
+  }
+  .result-amount {
+    font-size: 24px;
+    font-weight: 700;
+    color: #3fb950;
+    margin-bottom: 4px;
+  }
+  .result-rate {
+    font-size: 12px;
+    color: #8b949e;
+  }
+
+  /* ===== 常用匯率列表 ===== */
+  .section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #8b949e;
+    margin-bottom: 12px;
+    padding-left: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::before {
+    content: '';
+    width: 3px;
+    height: 14px;
+    background: #388bfd;
+    border-radius: 2px;
+  }
+
+  .rate-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .rate-item {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+  }
+  .rate-item:active {
+    background: #1c2128;
+  }
+  .rate-currency {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .currency-flag {
+    font-size: 24px;
+    width: 32px;
+    text-align: center;
+  }
+  .currency-info {
+    display: flex;
+    flex-direction: column;
+  }
+  .currency-code {
+    font-size: 15px;
+    font-weight: 600;
+    color: #e6edf3;
+  }
+  .currency-name {
+    font-size: 11px;
+    color: #8b949e;
+  }
+  .rate-value {
+    text-align: right;
+  }
+  .rate-amount {
+    font-size: 16px;
+    font-weight: 600;
+    color: #e6edf3;
+  }
+  .rate-unit {
+    font-size: 10px;
+    color: #484f58;
+  }
+
+  /* ===== Loading ===== */
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: #484f58;
+  }
+  .loading .spinner {
+    font-size: 32px;
+    display: inline-block;
+    animation: spin 1s linear infinite;
+    margin-bottom: 10px;
+  }
+
+  /* ===== Error ===== */
+  .error {
+    background: #161b22;
+    border: 1px solid #da3633;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    color: #f85149;
+  }
+
+  /* ===== 夾錢計算 ===== */
+  .split-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .split-inputs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .split-input-group {
+    flex: 1;
+  }
+  .split-input-group label {
+    display: block;
+    font-size: 11px;
+    color: #8b949e;
+    margin-bottom: 4px;
+  }
+  .split-input-group input,
+  .split-input-group select {
+    width: 100%;
+    padding: 10px 12px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    color: #e6edf3;
+    font-size: 14px;
+    outline: none;
+  }
+  .split-input-group input:focus,
+  .split-input-group select:focus {
+    border-color: #388bfd;
+  }
+  .split-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #1f6feb, #388bfd);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .split-btn:active {
+    opacity: 0.8;
+  }
+  .split-result {
+    margin-top: 14px;
+    display: none;
+  }
+  .split-result.visible {
+    display: block;
+  }
+  .split-result-title {
+    font-size: 13px;
+    color: #8b949e;
+    margin-bottom: 8px;
+  }
+  .split-result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .split-result-item {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .split-result-currency {
+    font-size: 12px;
+    color: #8b949e;
+  }
+  .split-result-amount {
+    font-size: 15px;
+    font-weight: 600;
+    color: #3fb950;
+  }
+
+  /* ===== 走馬燈匯率顯示 ===== */
+  .ticker-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 14px;
+    padding: 20px 16px 36px;
+    margin-bottom: 16px;
+    text-align: center;
+    overflow: hidden;
+    position: relative;
+    min-height: 120px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 28px;
+  }
+  .ticker-item {
+    position: absolute;
+    width: calc(100% - 32px);
+    left: 16px;
+    top: 28px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+  }
+  .ticker-item.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .ticker-amount {
+    font-size: 26px;
+    font-weight: 700;
+    color: #e6edf3;
+    margin-bottom: 8px;
+    line-height: 1.3;
+    word-break: break-all;
+  }
+  .ticker-amount .from {
+    color: #8b949e;
+  }
+  .ticker-amount .to {
+    color: #3fb950;
+  }
+  .ticker-rate {
+    font-size: 12px;
+    color: #484f58;
+  }
+  .ticker-dots {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+  }
+  .ticker-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #30363d;
+    transition: background 0.3s;
+  }
+  .ticker-dot.active {
+    background: #388bfd;
+  }
+
+  /* ===== Footer ===== */
+  .footer {
+    text-align: center;
+    padding: 20px;
+    color: #484f58;
+    font-size: 11px;
+    border-top: 1px solid #21262d;
+    margin-top: 16px;
+  }
+  .footer p { margin-bottom: 3px; }
+  .footer a {
+    color: #58a6ff;
+    text-decoration: none;
+  }
+
+  /* ===== Safe Area ===== */
+  @supports (padding: max(0px)) {
+    .header { padding-top: max(16px, env(safe-area-inset-top)); }
+    .container { padding-bottom: max(40px, env(safe-area-inset-bottom)); }
+  }
+
+  /* ===== Desktop ===== */
+  @media (min-width: 768px) {
+    .header { padding: 20px 24px; }
+    .header-title h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<div class="header">
+  <div class="header-left">
+    <span class="header-icon">💱</span>
+    <div class="header-title">
+      <h1>外幣兌換率</h1>
+      <p>Currency Exchange Rates</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="refresh-btn" id="refreshBtn" onclick="loadRates()">
+      <span id="refreshIcon">🔄</span> 刷新
+    </button>
+  </div>
+</div>
+
+<!-- ===== Main Content ===== -->
+<div class="container">
+  
+  <div class="update-time" id="updateTime">載入中...</div>
+
+  <!-- 走馬燈匯率顯示 -->
+  <div class="ticker-card" id="tickerCard">
+    <div id="tickerContainer"></div>
+    <div class="ticker-dots" id="tickerDots"></div>
+  </div>
+
+  <!-- 夾錢計算 -->
+  <div class="split-card">
+    <div class="converter-title">🧮 夾錢計算</div>
+    
+    <div class="split-inputs">
+      <div class="split-input-group">
+        <label>總金額</label>
+        <input type="number" id="splitTotal" value="1000" min="0" step="0.01">
+      </div>
+      <div class="split-input-group">
+        <label>幣種</label>
+        <select id="splitCurrency">
+          <option value="HKD">HKD</option>
+          <option value="CNY">CNY</option>
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+          <option value="JPY">JPY</option>
+          <option value="TWD">TWD</option>
+        </select>
+      </div>
+      <div class="split-input-group">
+        <label>人數</label>
+        <input type="number" id="splitPeople" value="4" min="1" step="1">
+      </div>
+    </div>
+    
+    <button class="split-btn" onclick="calculateSplit()">計算每人應畀</button>
+    
+    <div class="split-result" id="splitResult">
+      <div class="split-result-title" id="splitResultTitle"></div>
+      <div class="split-result-grid" id="splitResultGrid"></div>
+    </div>
+  </div>
+
+  <!-- 常用匯率列表 -->
+  <div class="section-title">
+    常用貨幣 (HKD 基準)
+  </div>
+  
+  <div id="rateList">
+    <div class="loading">
+      <div class="spinner">🔄</div>
+      <p>載入匯率數據...</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== Footer ===== -->
+<div class="footer">
+  <p>數據來源：<a href="https://frankfurter.dev" target="_blank">Frankfurter API</a>（歐洲央行參考匯率）</p>
+  <p>僅供參考，實際匯率以銀行/找換店為準</p>
+  <p>HIS Tools © 2026.1.00</p>
+</div>
+
+<script>
+// 常用貨幣列表
+const POPULAR_CURRENCIES = [
+  { code: 'CNY', name: '人民幣', flag: '🇨🇳' },
+  { code: 'USD', name: '美元', flag: '🇺🇸' },
+  { code: 'EUR', name: '歐元', flag: '🇪🇺' },
+  { code: 'JPY', name: '日圓', flag: '🇯🇵' },
+  { code: 'TWD', name: '新台幣', flag: '🇹🇼' },
+];
+
+let allCurrencies = {};
+let latestRates = null;
+
+// Dummy 匯率數據（本地測試用，1 HKD = X 外幣）
+const DUMMY_RATES = {
+  date: '2026-10-07',
+  base: 'HKD',
+  rates: {
+    USD: 0.1274,
+    EUR: 0.1170,
+    GBP: 0.1005,
+    JPY: 20.15,
+    CNY: 0.9180,
+    AUD: 0.1945,
+    CAD: 0.1735,
+    SGD: 0.1715,
+    TWD: 4.0520,
+    KRW: 175.5,
+    THB: 4.7850,
+    CHF: 0.1135,
+  }
+};
+
+// 用 Dummy 數據模擬 API 回應
+function dummyResponse(amount, from, to) {
+  // 先換算成 HKD，再換算成目標貨幣
+  let hkdAmount;
+  if (from === 'HKD') {
+    hkdAmount = amount;
+  } else if (DUMMY_RATES.rates[from]) {
+    hkdAmount = amount / DUMMY_RATES.rates[from];
+  } else {
+    hkdAmount = amount;
+  }
+  
+  const rates = {};
+  const toCodes = to.split(',');
+  toCodes.forEach(code => {
+    code = code.trim();
+    if (code === 'HKD') {
+      rates[code] = hkdAmount;
+    } else if (DUMMY_RATES.rates[code]) {
+      rates[code] = hkdAmount * DUMMY_RATES.rates[code];
+    }
+  });
+  
+  return {
+    amount: amount,
+    base: from,
+    date: DUMMY_RATES.date,
+    rates: rates
+  };
+}
+
+// 走馬燈變量
+let tickerIndex = 0;
+let tickerTimer = null;
+let tickerRates = null;
+
+// 初始化走馬燈
+function initTicker(rates) {
+  tickerRates = rates;
+  const container = document.getElementById('tickerContainer');
+  const dots = document.getElementById('tickerDots');
+  
+  let html = '';
+  let dotsHtml = '';
+  
+  POPULAR_CURRENCIES.forEach((c, i) => {
+    const rate = rates[c.code];
+    if (rate) {
+      const amount = (100 * rate).toFixed(2);
+      const ratePerOne = rate.toFixed(4);
+      html += `
+        <div class="ticker-item" data-index="${i}">
+          <div class="ticker-amount">
+            <span class="from">100 HKD</span> = <span class="to">${amount} ${c.code}</span>
+          </div>
+          <div class="ticker-rate">${c.flag} ${c.name} · 1 HKD = ${ratePerOne} ${c.code}</div>
+        </div>
+      `;
+      dotsHtml += `<div class="ticker-dot" data-index="${i}"></div>`;
+    }
+  });
+  
+  container.innerHTML = html;
+  dots.innerHTML = dotsHtml;
+  
+  // 顯示第一個
+  const items = container.querySelectorAll('.ticker-item');
+  const dotElements = dots.querySelectorAll('.ticker-dot');
+  if (items.length > 0) {
+    items[0].classList.add('active');
+    dotElements[0].classList.add('active');
+  }
+  
+  // 啟動輪播
+  startTicker();
+}
+
+// 啟動走馬燈
+function startTicker() {
+  if (tickerTimer) clearInterval(tickerTimer);
+  
+  tickerTimer = setInterval(() => {
+    const container = document.getElementById('tickerContainer');
+    const items = container.querySelectorAll('.ticker-item');
+    const dots = document.querySelectorAll('.ticker-dot');
+    
+    if (items.length === 0) return;
+    
+    // 隱藏當前
+    items[tickerIndex].classList.remove('active');
+    dots[tickerIndex].classList.remove('active');
+    
+    // 下一個
+    tickerIndex = (tickerIndex + 1) % items.length;
+    
+    // 顯示新的
+    items[tickerIndex].classList.add('active');
+    dots[tickerIndex].classList.add('active');
+  }, 3000);
+}
+
+// 帶 CORS 代理 fallback 的 fetch
+async function fetchWithProxy(url) {
+  // 嘗試多個 CORS 代理
+  const proxies = [
+    'https://corsproxy.io/?url=',
+    'https://api.allorigins.win/raw?url=',
+  ];
+  
+  // 先試直接調用
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } catch (err) {
+    // 逐個試代理
+    for (const proxy of proxies) {
+      try {
+        const proxyUrl = proxy + encodeURIComponent(url);
+        const res = await fetch(proxyUrl);
+        if (!res.ok) continue;
+        return await res.json();
+      } catch (e) {
+        continue;
+      }
+    }
+    // 全部失敗，用 Dummy 數據（最後 fallback）
+    console.warn('API 調用失敗，使用 Dummy 數據');
+    const urlObj = new URL(url);
+    const amount = parseFloat(urlObj.searchParams.get('amount')) || 1;
+    const from = urlObj.searchParams.get('from') || 'HKD';
+    const to = urlObj.searchParams.get('to') || 'USD';
+    return dummyResponse(amount, from, to);
+  }
+}
+
+// 載入匯率
+async function loadRates() {
+  const refreshBtn = document.getElementById('refreshBtn');
+  const refreshIcon = document.getElementById('refreshIcon');
+  const rateList = document.getElementById('rateList');
+  
+  refreshBtn.classList.add('loading');
+  refreshIcon.classList.add('spin');
+  
+  try {
+    // 獲取 HKD 基準的常用貨幣匯率
+    const codes = POPULAR_CURRENCIES.map(c => c.code).join(',');
+    const url = `https://api.frankfurter.app/latest?from=HKD&to=${codes}`;
+    
+    const data = await fetchWithProxy(url);
+    
+    latestRates = data;
+    
+    // 顯示更新時間
+    const updateTime = new Date(data.date);
+    const hkTime = new Date(updateTime.getTime() + 8 * 60 * 60 * 1000);
+    const dateStr = hkTime.toLocaleDateString('zh-HK', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    document.getElementById('updateTime').textContent = `數據日期：${dateStr}（歐洲央行參考匯率）`;
+    
+    // 渲染匯率列表
+    renderRateList(data.rates);
+    
+    // 啟動走馬燈
+    initTicker(data.rates);
+    
+  } catch (err) {
+    rateList.innerHTML = `
+      <div class="error">
+        <p>❌ 載入失敗</p>
+        <p style="font-size:12px;margin-top:8px;">${err.message}</p>
+        <p style="font-size:11px;margin-top:8px;color:#8b949e;">本地 file:// 測試可能受 CORS 限制，上傳到 GitHub Pages 後正常</p>
+      </div>
+    `;
+  } finally {
+    refreshBtn.classList.remove('loading');
+    refreshIcon.classList.remove('spin');
+  }
+}
+
+// 渲染匯率列表
+function renderRateList(rates) {
+  const rateList = document.getElementById('rateList');
+  let html = '<div class="rate-list">';
+  
+  POPULAR_CURRENCIES.forEach(c => {
+    const rate = rates[c.code];
+    if (rate) {
+      // 1 HKD = X 外幣 → 顯示 1 外幣 = X HKD
+      const inverseRate = (1 / rate).toFixed(4);
+      html += `
+        <div class="rate-item">
+          <div class="rate-currency">
+            <span class="currency-flag">${c.flag}</span>
+            <div class="currency-info">
+              <span class="currency-code">${c.code}</span>
+              <span class="currency-name">${c.name}</span>
+            </div>
+          </div>
+          <div class="rate-value">
+            <div class="rate-amount">${inverseRate}</div>
+            <div class="rate-unit">HKD / 1 ${c.code}</div>
+          </div>
+        </div>
+      `;
+    }
+  });
+  
+  html += '</div>';
+  rateList.innerHTML = html;
+}
+
+// 夾錢計算
+async function calculateSplit() {
+  const total = parseFloat(document.getElementById('splitTotal').value) || 0;
+  const currency = document.getElementById('splitCurrency').value;
+  const people = parseInt(document.getElementById('splitPeople').value) || 1;
+  const resultDiv = document.getElementById('splitResult');
+  const resultTitle = document.getElementById('splitResultTitle');
+  const resultGrid = document.getElementById('splitResultGrid');
+  
+  if (total <= 0 || people <= 0) {
+    alert('請輸入有效的總金額同人數');
+    return;
+  }
+  
+  const perPerson = total / people;
+  
+  // 要顯示的 6 種幣種
+  const targetCurrencies = [
+    { code: 'CNY', name: '人民幣', flag: '🇨🇳' },
+    { code: 'HKD', name: '港幣', flag: '🇭🇰' },
+    { code: 'USD', name: '美元', flag: '🇺🇸' },
+    { code: 'EUR', name: '歐元', flag: '🇪🇺' },
+    { code: 'JPY', name: '日圓', flag: '🇯🇵' },
+    { code: 'TWD', name: '新台幣', flag: '🇹🇼' },
+  ];
+  
+  resultTitle.textContent = `總計 ${total} ${currency} ÷ ${people} 人 = ${perPerson.toFixed(2)} ${currency}/人`;
+  resultGrid.innerHTML = '<div class="loading" style="grid-column:1/-1;"><p>換算中...</p></div>';
+  resultDiv.classList.add('visible');
+  
+  try {
+    // 獲取匯率
+    const codes = targetCurrencies.map(c => c.code).join(',');
+    const url = `https://api.frankfurter.app/latest?amount=${perPerson}&from=${currency}&to=${codes}`;
+    const data = await fetchWithProxy(url);
+    
+    let html = '';
+    targetCurrencies.forEach(c => {
+      const amount = data.rates[c.code];
+      if (amount !== undefined) {
+        html += `
+          <div class="split-result-item">
+            <span class="split-result-currency">${c.flag} ${c.code}</span>
+            <span class="split-result-amount">${amount.toFixed(2)}</span>
+          </div>
+        `;
+      }
+    });
+    resultGrid.innerHTML = html;
+    
+  } catch (err) {
+    resultGrid.innerHTML = `<div class="error" style="grid-column:1/-1;">換算失敗：${err.message}</div>`;
+  }
+}
+
+// 初始化
+loadRates();
+</script>
+
+</body>
+</html>

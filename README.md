@@ -41,3 +41,6 @@
 - [巴士到站查詢](https://github.com/hkharrycheng/bus-eta-sync)
 - [HIS Tools Landing Page](https://github.com/hkharrycheng/his-tools)
 - [外幣兌換率](https://github.com/hkharrycheng/currency-exchange)
+
+## Version Control
+- v1.01 (2026-10-13): header 改用圖標相片 LOGO
